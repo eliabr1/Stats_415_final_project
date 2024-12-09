@@ -1,0 +1,120 @@
+---
+title: "Ukraine data"
+output: html_document
+date: "2024-07-29"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyr)
+
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+```{r}
+#basic summary statisitcs and other stuff, no cleaning yet
+ukraine_data = read.csv("ukr_adults_SIBS.csv")
+
+#This is total number of cases in dataset 111,631
+length(unique(ukraine_data$case_id))
+#Mean age is 43
+#age goes from 20 to 134??? Upper bound is a little strange
+summary(ukraine_data$Age)
+
+summary(ukraine_data$Sex)
+#We have mostly men in this dataset, 73% men
+sum(ukraine_data$Sex == "Male") / (sum(ukraine_data$Sex == "Male") + sum(ukraine_data$Sex == "Female"))
+#only male and female coded, no strange values?
+unique(ukraine_data$Sex)
+length(unique(ukraine_data$Weight))
+
+unique(ukraine_data$DST.result.R)
+unique(ukraine_data$Alcohol.abuse)
+```
+
+
+```{r}
+#Only want DST.results.R out of the drug resistances, get rid of rows with NA
+#Not looking at final_outcome or things like that I think, but will include anyways
+#
+
+#Alcohol.abuse, Injecting.drug.use, Homeless, Unemployed, Healthcare.worker, Prisoner are all binary, need to fill out with NO
+#Was told location is not very important, can manually remove it from algorithm
+ukraine_new <- ukraine_data
+
+#change everything from "-" to "No"
+ukraine_new[,17:22] <- lapply(ukraine_new[,17:22], function(x) gsub("-", "No", x))
+
+
+length(unique(ukraine_new$case_id))
+#ukraine_new <- na.omit(ukraine_new$DST.result.R)
+unique(ukraine_new$Alcohol.abuse)
+#is.na returns 1 if the row has NA, so !is.na all non NA rows
+#syntax for everything in the col 
+ukraine_new <- ukraine_new[!is.na(ukraine_new$DST.result.R), ]
+
+unique(ukraine_new$DST.result.R)
+
+#chatgpt helping me out
+consistency_check <- tapply(ukraine_new$DST.result.R, ukraine_new$case_id, function(x) length(unique(x)) == 1)
+
+result <- data.frame(
+  CaseID = names(consistency_check),
+  Consistent = consistency_check
+)
+result
+#Note that drug resistance can change over the course of time, 2089 instances of this
+sum(result$Consistent == "FALSE")
+
+#Note 1: we can check drug resistance at Baseline!
+#Note 2: we can check drug resistance at the end of treatment, or at last patient record
+#Again, it is clear that there is a difference between the two that needs to be taken into acccount
+#some strange ages
+summary(ukraine_new$Age)
+
+age_sort <- sort(ukraine_new$Age)
+tail(age_sort, 10)
+#just remove the person with 125 and 134!
+
+```
+
+```{r}
+ukraine_data = read.csv("ukr_adults_SIBS.csv")
+
+ukraine_new <- ukraine_data
+
+ukraine_new[,17:22] <- lapply(ukraine_new[,17:22], function(x) gsub("-", "No", x))
+
+ukraine_new <- ukraine_new[!is.na(ukraine_new$DST.result.R), ]
+
+length(ukraine_new$case_id)
+#Looking at frequency of CaseID, most people have one record, some have 2, and no more than 3 for most
+hi <- tabulate(ukraine_new$case_id)
+hi <- hi[hi != 0]
+
+
+#number greater than 1
+length(hi[hi > 1])
+
+length(hi[hi > 2])
+
+length(hi[hi > 3])
+length(hi)
+hist(hi)
+summary(hi)
+
+col_index <- ukraine_new[-c(3, 29, 30, 32:47)]
+
+summary(ukraine_new$Weight)
+hi <- sort(ukraine_new$Weight)
+tail(hi, 10)
+head(hi,10)
+
+
+```
